@@ -4,7 +4,7 @@
 #define TAM 500
 #define ERRO pow(10, -8)
 
-int calculaErro(double *K1, double* K, double erro)
+double calculaNorma(double *K1, double* K)
 {
     double vet[TAM];
     double maior;
@@ -21,29 +21,24 @@ int calculaErro(double *K1, double* K, double erro)
             maior = moduloV;
     }
 
-    if(maior < erro)
-        return 1;
-    else
-        return 0;
-    
-    
+    return maior;
 }
 
 double ** criaMatriz()
 {
-    double **matriz = (double**)calloc(TAM,sizeof(double));
+    double **matriz = calloc(TAM,sizeof(double *));
     
     for(int i = 0; i < TAM; i++)
-        matriz[i] = (double*)calloc(TAM,sizeof(double));
+        matriz[i] = calloc(TAM,sizeof(double));
 
     for(int i = 0; i < TAM; i++)
         matriz[i][i] = 5;
 
     for(int i = 0; i < TAM-1; i++)
-        {
-            matriz[i][i+1] = -1;
-            matriz[i+1][i] = -1;
-        }
+    {
+        matriz[i][i+1] = -1;
+        matriz[i+1][i] = -1;
+    }
 
     for(int i = 0; i < TAM-3; i++)
     {
@@ -55,6 +50,13 @@ double ** criaMatriz()
 
 }
 
+void destroiMatriz(double ** matriz)
+{
+    for(int i = 0; i < TAM; i++)   
+        free(matriz[i]);
+    free(matriz);
+}
+
 double * gseidel(double ** matriz,double * b, double *K, double * K1)
 {
     int i = 0;
@@ -63,18 +65,10 @@ double * gseidel(double ** matriz,double * b, double *K, double * K1)
 
     for(int kmax = 0; kmax < 5*TAM; kmax++)
     {
-        somatorio = 0;
-        i = 0;
-        for(int j = i+1; j < TAM; j++)
+        for(i = 0; i < TAM ; i++)
         {
-            somatorio = somatorio + matriz[i][j]*K[j];
-        }
-        
-        K1[i] = (b[i] - somatorio)/matriz[i][i];
-        for(i = 1; i < TAM ; i++)
-        {
-            somatorio = 0;
-            somatorio2 = 0;
+            somatorio = 0.0;
+            somatorio2 = 0.0;
             for(int j = i+1; j < TAM; j++)
             {
                 somatorio = somatorio + matriz[i][j]*K[j];
@@ -82,31 +76,20 @@ double * gseidel(double ** matriz,double * b, double *K, double * K1)
 
             for(int j = 0; j <= i-1; j++)
             {
-                somatorio2 = somatorio2 + matriz[i][j]*K1[i];
+                somatorio2 = somatorio2 + matriz[i][j]*K1[j];
             }
 
             K1[i] = (b[i] - somatorio2 - somatorio)/matriz[i][i];
         }
 
-        if(calculaErro(K1, K, ERRO) == 1)
-            return K1;
-        else
-            if(kmax > 0)
-                for(int j = 0; j < TAM; j++)
-                    K[j] = K1[j];
+        if(calculaNorma(K1, K) <= ERRO)
+           return K1;
+
+        for(int j = 0; j < TAM; j++)
+           K[j] = K1[j];
     }
 
     return NULL;
-}
-
-void printmatriz(double **matriz)
-{
-    for(int i = 0; i < TAM; i++)
-    {
-        for(int j = 0; j < TAM; j++)
-            printf(" %lf ", matriz[i][j]);
-        printf("\n");
-    }
 }
 
 int main()
@@ -115,9 +98,9 @@ int main()
     double * b = (double*)calloc(TAM, sizeof(double));
     double * K = (double*)calloc(TAM, sizeof(double));
     double * K1 = (double*)calloc(TAM, sizeof(double));
-    double somatorio = 0;
 
-/*
+    /*TESTE INICIAL DO PROGRAMA
+    double somatorio = 0;
     for(int i = 0; i <  TAM; i++)
     {
         somatorio = 0;
@@ -125,14 +108,31 @@ int main()
             somatorio = somatorio + matriz[i][j];
         
         b[i] = somatorio;
-    }
-*/
+    }*/
+
     for(int i = 0; i < TAM; i++)
-        b[i] = (1.0/(i+1));
+        b[i] = (1.0/(i+1.0));
 
     K1 = gseidel(matriz, b, K, K1);
 
+    if (K1 == NULL)
+    {
+        printf("\n O método de Gauss-Seidel divergiu! \n");
+        destroiMatriz(matriz);
+        free(b);
+        free(K);
+        free(K1);
+        return 0;
+    }
+
     for(int i = 0; i < TAM; i++)
         printf(" %lf ", K1[i]);
+    
+    destroiMatriz(matriz);
+    free(b);
+    free(K);
+    free(K1);
+
+    return 0;
 
 }
